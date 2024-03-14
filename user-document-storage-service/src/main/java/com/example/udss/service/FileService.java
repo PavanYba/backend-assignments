@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Objects;
 import java.io.InputStream;
@@ -22,6 +23,9 @@ public class FileService {
 
     private final AmazonS3 s3Client;
     private final String bucketName;
+    @Value("${file.download.path}")
+    private String downloadPath;
+
 
     @Autowired
     public FileService(AmazonS3 s3Client, @Value("${aws.s3.bucketName}") String bucketName) {
@@ -58,7 +62,7 @@ public class FileService {
             headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName);
             headers.add(HttpHeaders.CONTENT_TYPE, object.getObjectMetadata().getContentType());
             headers.setContentLength(content.length);
-
+            saveFileToLocal(content, fileName);
             return new ResponseEntity<>(content, headers, HttpStatus.OK);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("File not found: " + fileName);
@@ -77,4 +81,13 @@ public class FileService {
             return "Failed to upload file: " + file.getOriginalFilename();
         }
     }
+    private void saveFileToLocal(byte[] content, String fileName) throws IOException {
+        String filePath = downloadPath + fileName;
+        try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
+            outputStream.write(content);
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new IOException("Failed to save file: " + fileName);
+        }}
+
 }
